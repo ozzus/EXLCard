@@ -6,16 +6,16 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
-@Table(name = "credit_card")
+@Table(name = "crypto_cards")
 @Data
-public class CreditCard {
+public class CryptoCard {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Id
-    @Column(name = "credit_card_id")
-    private Long CreditCardId;
+    @Column(name = "crypto_card_id")
+    private Long cryptoCardId;
 
-    @Column(name = "creditCardnumber")
-    private String CreditCardNumber;
+    @Column(name = "cryptoCardnumber")
+    private String cryptoCardNumber;
 
     @Column(name = "cvv")
     @JsonIgnore
@@ -24,4 +24,7 @@ public class CreditCard {
     @Column(name = "expiry_date")
     private String expiryDate;
 
+    @ManyToOne
+    @JoinColumn(name = "client_id") // Added to map the client relationship
+    private Client client;
 }

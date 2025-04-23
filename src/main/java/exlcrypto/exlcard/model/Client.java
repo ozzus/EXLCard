@@ -23,12 +23,11 @@ public class Client {
     private String lastName;
     @Column(name = "email")
     private String email;
-    @Column(name = "dateOfBirthday")
+    @Column(name = "date_of_birthday")
     private Date dateOfBirthday;
 
-    @OneToMany(fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "client",fetch = FetchType.LAZY)
     @JsonIgnore
-    @JoinColumn(name = "CreditCardId")
-    private List<CreditCard> CreditCards;
+    private List<CryptoCard> сryptoCards;
 
 }
