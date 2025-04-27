@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,17 +31,42 @@ public class CryptoCardService {
         return maskCardData(savedCard);
     }
 
+    public Optional<CryptoCard> updateCard(Long id, CryptoCardRequest request) {
+        return cryptoCardRepository.findById(id)
+                .map(card -> {
+                    card.setCryptoCardNumber(request.getCryptoCardNumber());
+                    card.setExpiryDate(request.getExpiryDate());
+                    card.setCvv(request.getCvv());
+                    return maskCardData(cryptoCardRepository.save(card));
+                });
+    }
+
+    public Optional<CryptoCard> getCardById(Long id) {
+        return cryptoCardRepository.findById(id)
+                .map(this::maskCardData);
+    }
+
+    public boolean deleteCard(Long id) {
+        if (cryptoCardRepository.existsById(id)) {
+            cryptoCardRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
     public List<CryptoCard> getCardsByClient(Long clientId) {
-        return cryptoCardRepository.findByClientId(clientId)
+        return cryptoCardRepository.findByClient_ClientId(clientId)
                 .stream()
                 .map(this::maskCardData)
                 .toList();
     }
 
     private CryptoCard maskCardData(CryptoCard card) {
-        String maskedNumber = "**** **** **** " + card.getCryptoCardNumber().substring(12);
-        card.setCryptoCardNumber(maskedNumber);
-        card.setCvv(null); // Удаляем CVV из ответа
+        if (card.getCryptoCardNumber().length() == 16) {
+            String maskedNumber = "**** **** **** " + card.getCryptoCardNumber().substring(12);
+            card.setCryptoCardNumber(maskedNumber);
+        }
+        card.setCvv(null);
         return card;
     }
 }

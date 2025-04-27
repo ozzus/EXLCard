@@ -8,5 +8,6 @@ import java.util.List;
 
 @Repository
 public interface CryptoCardRepository extends JpaRepository<CryptoCard, Long> {
-    List<CryptoCard> findByClientId(Long clientId);
+    List<CryptoCard> findByClient_ClientId(Long clientClientId);
 }
+

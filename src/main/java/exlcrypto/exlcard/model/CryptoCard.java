@@ -9,22 +9,21 @@ import lombok.Data;
 @Table(name = "crypto_cards")
 @Data
 public class CryptoCard {
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
     @Column(name = "crypto_card_id")
     private Long cryptoCardId;
 
-    @Column(name = "cryptoCardnumber")
+    @Column(name = "crypto_card_number",nullable = false,length = 16)
     private String cryptoCardNumber;
 
-    @Column(name = "cvv")
     @JsonIgnore
+    @Column(name = "cvv", nullable = false, length = 4)
     private String cvv;
 
-    @Column(name = "expiry_date")
+    @Column(name = "expiry_date",nullable = false,length = 5)
     private String expiryDate;
 
     @ManyToOne
-    @JoinColumn(name = "client_id") // Added to map the client relationship
     private Client client;
 }

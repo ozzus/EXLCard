@@ -1,13 +1,13 @@
 package exlcrypto.exlcard.model;
 
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.Date;
-import java.util.List;
-
 
 @Entity
 @Data
@@ -15,19 +15,26 @@ import java.util.List;
 public class Client {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
-    @Column(name = "client_id")
     private Long clientId;
-    @Column(name = "first_name")
+
+    @NotBlank(message = "Имя обязательно")
+    @Size(min = 2, max = 50, message = "Имя должно быть от 2 до 50 символов")
     private String firstName;
-    @Column(name = "last_name")
+
+    @NotBlank(message = "Фамилия обязательна")
+    @Size(min = 2, max = 50, message = "Фамилия должна быть от 2 до 50 символов")
     private String lastName;
-    @Column(name = "email")
+
+    @Email(message = "Некорректный формат email")
     private String email;
-    @Column(name = "date_of_birthday")
+
+    @Past(message = "Дата рождения должна быть в прошлом")
+    @Temporal(TemporalType.DATE)
     private Date dateOfBirthday;
-
-    @OneToMany(mappedBy = "client",fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<CryptoCard> сryptoCards;
-
 }
+
+//    @OneToMany(mappedBy = "client",fetch = FetchType.LAZY)
+//    @JsonIgnore
+//    private List<CryptoCard> сryptoCards;
+
+
