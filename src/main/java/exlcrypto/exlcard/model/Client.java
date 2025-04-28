@@ -1,12 +1,12 @@
 package exlcrypto.exlcard.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -28,9 +28,18 @@ public class Client {
     @Email(message = "Некорректный формат email")
     private String email;
 
+    @NotBlank(message = "Номер телефона обязателен")
+    @Pattern(
+            regexp = "^(\\+7\\d{10,11}|8\\d{10})$",
+            message = "Форматы: +7XXXXXXXXXX (12-13 символов) или 8XXXXXXXXXX (11 символов)"
+    )
+    @Column(name = "phone_number", length = 20,unique = true)
+    private String phoneNumber;
+
     @Past(message = "Дата рождения должна быть в прошлом")
-    @Temporal(TemporalType.DATE)
-    private Date dateOfBirthday;
+    @JsonFormat(pattern = "dd.MM.yyyy")
+    @Column(name = "date_of_birthday")
+    private LocalDate dateOfBirthday;
 }
 
 //    @OneToMany(mappedBy = "client",fetch = FetchType.LAZY)

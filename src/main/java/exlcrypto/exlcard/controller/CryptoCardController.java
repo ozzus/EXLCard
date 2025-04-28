@@ -2,7 +2,6 @@ package exlcrypto.exlcard.controller;
 
 import exlcrypto.exlcard.dto.CryptoCardRequest;
 import exlcrypto.exlcard.model.CryptoCard;
-import exlcrypto.exlcard.model.Client;
 import exlcrypto.exlcard.repository.ClientRepository;
 import exlcrypto.exlcard.service.CryptoCardService;
 import jakarta.validation.Valid;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 
 @RestController

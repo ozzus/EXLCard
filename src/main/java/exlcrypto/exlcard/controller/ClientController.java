@@ -5,19 +5,21 @@ import exlcrypto.exlcard.repository.ClientRepository;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/clients")
 @Slf4j
 public class ClientController {
+
     private final ClientRepository clientRepository;
 
     @Autowired
@@ -35,29 +37,50 @@ public class ClientController {
             return ResponseEntity.badRequest().body(errors);
         }
 
-        Client savedClient = clientRepository.save(client);
-        return ResponseEntity.ok(savedClient);
+        if (clientRepository.existsByPhoneNumber(client.getPhoneNumber())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("phoneNumber", "Номер уже используется"));
+        }
+
+        try {
+            Client savedClient = clientRepository.save(client);
+            return ResponseEntity.ok(savedClient);
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.internalServerError()
+                    .body("Ошибка сохранения данных");
+        }
     }
 
     @GetMapping("/{clientId}")
     public ResponseEntity<Client> getClient(@PathVariable Long clientId) {
-        Optional<Client> client = clientRepository.findById(clientId);
-        return client.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return clientRepository.findById(clientId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{clientId}")
-    public ResponseEntity<Client> updateClient(
+    public ResponseEntity<?> updateClient(
             @PathVariable Long clientId,
-            @RequestBody Client updatedClient
+            @Valid @RequestBody Client updatedClient,
+            BindingResult bindingResult
     ) {
+        if (bindingResult.hasErrors()) {
+            return getValidationErrors(bindingResult);
+        }
+
         return clientRepository.findById(clientId)
                 .map(client -> {
-                    client.setFirstName(updatedClient.getFirstName());
-                    client.setEmail(updatedClient.getEmail());
-                    client.setLastName(updatedClient.getLastName());
-                    client.setDateOfBirthday(updatedClient.getDateOfBirthday());
-                    clientRepository.save(client);
-                    return ResponseEntity.ok(client);
+                    // Проверка уникальности номера
+                    if (!client.getPhoneNumber().equals(updatedClient.getPhoneNumber())) {
+                        if (clientRepository.existsByPhoneNumber(updatedClient.getPhoneNumber())) {
+                            return ResponseEntity.status(HttpStatus.CONFLICT)
+                                    .body("Номер телефона уже используется другим клиентом");
+                        }
+                    }
+
+                    updateClientFields(client, updatedClient);
+                    Client savedClient = clientRepository.save(client);
+                    return ResponseEntity.ok(savedClient);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -66,9 +89,26 @@ public class ClientController {
     public ResponseEntity<String> deleteClient(@PathVariable Long clientId) {
         if (clientRepository.existsById(clientId)) {
             clientRepository.deleteById(clientId);
-            return ResponseEntity.ok("Client deleted");
-        } else {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok("Клиент успешно удален");
         }
+        return ResponseEntity.notFound().build();
+    }
+
+    private void updateClientFields(Client existing, Client updated) {
+        existing.setFirstName(updated.getFirstName());
+        existing.setLastName(updated.getLastName());
+        existing.setEmail(updated.getEmail());
+        existing.setDateOfBirthday(updated.getDateOfBirthday());
+        existing.setPhoneNumber(updated.getPhoneNumber());
+    }
+
+    private ResponseEntity<Map<String, String>> getValidationErrors(BindingResult bindingResult) {
+        Map<String, String> errors = new HashMap<>();
+        bindingResult.getAllErrors().forEach(error -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.badRequest().body(errors);
     }
 }
