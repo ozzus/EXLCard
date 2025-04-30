@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Random;
 
 @RestController
-@RequestMapping("/api/cards")
+@RequestMapping("/api/cryptocards")
 @Slf4j
 public class CryptoCardController {
 

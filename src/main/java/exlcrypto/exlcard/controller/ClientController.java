@@ -11,7 +11,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +53,55 @@ public class ClientController {
             return ResponseEntity.internalServerError()
                     .body("Ошибка сохранения данных");
         }
+    }
+
+    @PatchMapping("/{clientId}")
+    public ResponseEntity<?> updateClient(
+            @PathVariable Long clientId,
+            @Valid @RequestBody Map<String, Object> updates,
+            BindingResult bindingResult) {
+
+        if (bindingResult.hasErrors()) {
+            return getValidationErrors(bindingResult);
+        }
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+        return clientRepository.findById(clientId)
+                .map(client -> {
+                    updates.forEach((key, value) -> {
+                        switch (key) {
+                            case "firstName" -> client.setFirstName((String) value);
+                            case "lastName" -> client.setLastName((String) value);
+                            case "email" -> client.setEmail((String) value);
+                            case "dateOfBirthday" -> {
+                                try {
+                                    LocalDate date = LocalDate.parse((String) value, formatter);
+                                    client.setDateOfBirthday(date);
+                                } catch (DateTimeParseException e) {
+                                    throw new ResponseStatusException(
+                                            HttpStatus.BAD_REQUEST,
+                                            "Неверный формат даты. Используйте dd.MM.yyyy"
+                                    );
+                                }
+                            }
+                            case "phoneNumber" -> {
+                                String newPhone = (String) value;
+                                if (!newPhone.equals(client.getPhoneNumber()) &&
+                                        clientRepository.existsByPhoneNumber(newPhone)) {
+                                    throw new ResponseStatusException(
+                                            HttpStatus.CONFLICT,
+                                            "Номер телефона уже используется"
+                                    );
+                                }
+                                client.setPhoneNumber(newPhone);
+                            }
+                        }
+                    });
+
+                    return ResponseEntity.ok(clientRepository.save(client));
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{clientId}")
