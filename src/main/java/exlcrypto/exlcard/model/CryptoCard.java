@@ -24,6 +24,8 @@ public class CryptoCard {
     @Column(name = "expiry_date",nullable = false,length = 5)
     private String expiryDate;
 
+    @JsonIgnore // Исключаем клиента из JSON
     @ManyToOne
+    @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 }
