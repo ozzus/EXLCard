@@ -9,23 +9,25 @@ import lombok.Data;
 @Table(name = "crypto_cards")
 @Data
 public class CryptoCard {
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
-    @Column(name = "crypto_card_id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long cryptoCardId;
 
-    @Column(name = "crypto_card_number",nullable = false,length = 16)
+    @Column(nullable = false, length = 16)
     private String cryptoCardNumber;
 
     @JsonIgnore
-    @Column(name = "cvv", nullable = false, length = 4)
+    @Column(nullable = false, length = 4)
     private String cvv;
 
-    @Column(name = "expiry_date",nullable = false,length = 5)
+    @Column(nullable = false, length = 5)
     private String expiryDate;
 
-    @JsonIgnore // Исключаем клиента из JSON
+    @Column(unique = true)
+    private String cvvToken; // Для одноразового доступа
+
+    @JsonIgnore
     @ManyToOne
-    @JoinColumn(name = "client_id", nullable = false)
+    @JoinColumn(name = "client_id")
     private Client client;
 }

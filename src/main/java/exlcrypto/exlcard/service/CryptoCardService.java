@@ -1,113 +1,106 @@
 package exlcrypto.exlcard.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import exlcrypto.exlcard.exception.InvalidTokenException;
+import exlcrypto.exlcard.exception.ResourceNotFoundException;
 import exlcrypto.exlcard.model.Client;
 import exlcrypto.exlcard.model.CryptoCard;
 import exlcrypto.exlcard.repository.ClientRepository;
 import exlcrypto.exlcard.repository.CryptoCardRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class CryptoCardService {
 
-    private static final String CARD_PREFIX = "4440";
-    private static final int CARD_NUMBER_LENGTH = 16;
-    private static final int CVV_LENGTH = 3;
-    private static final int CARD_VALID_YEARS = 3;
-
     private final CryptoCardRepository cryptoCardRepository;
     private final ClientRepository clientRepository;
 
+    // Кэш для хранения CVV (токен -> CVV)
+    private final Cache<String, String> cvvCache = Caffeine.newBuilder()
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .maximumSize(1000)
+            .build();
+
     public CryptoCard createCardForClient(Long clientId) {
         Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Клиент с ID " + clientId + " не найден"
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
-        CryptoCard card = new CryptoCard();
-        card.setCryptoCardNumber(generateCardNumber());
-        card.setExpiryDate(generateExpiryDate());
-        card.setCvv(generateCVV());
-        card.setClient(client);
-
-        return maskCardData(cryptoCardRepository.save(card));
+        CryptoCard card = generateCard(client);
+        storeCvvInCache(card);
+        return saveMaskedCard(card);
     }
 
-    public Optional<CryptoCard> updateCardDetails(Long cardId, String expiryDate, String cvv) {
-        return cryptoCardRepository.findById(cardId)
-                .map(card -> {
-                    if (expiryDate != null) {
-                        card.setExpiryDate(expiryDate);
-                    }
-                    if (cvv != null) {
-                        card.setCvv(cvv);
-                    }
-                    return maskCardData(cryptoCardRepository.save(card));
-                });
-    }
-
-    public Optional<CryptoCard> getCardDetails(Long cardId) {
-        return cryptoCardRepository.findById(cardId)
-                .map(this::maskCardData);
-    }
-
-    public boolean removeCard(Long cardId) {
-        if (cryptoCardRepository.existsById(cardId)) {
-            cryptoCardRepository.deleteById(cardId);
-            return true;
+    public String getCvvByToken(String token) {
+        String cvv = cvvCache.getIfPresent(token);
+        if (cvv == null) {
+            throw new InvalidTokenException("CVV token is invalid or expired");
         }
-        return false;
+        cvvCache.invalidate(token);
+        return cvv;
     }
 
-    public List<CryptoCard> getAllClientCards(Long clientId) {
+    public List<CryptoCard> getClientCards(Long clientId) {
         return cryptoCardRepository.findByClient_ClientId(clientId)
                 .stream()
                 .map(this::maskCardData)
                 .toList();
     }
 
+    public void deleteCard(Long cardId) {
+        cryptoCardRepository.deleteById(cardId);
+    }
+
+    private CryptoCard generateCard(Client client) {
+        CryptoCard card = new CryptoCard();
+        card.setCryptoCardNumber(generateCardNumber());
+        card.setExpiryDate(generateExpiryDate());
+        card.setCvv(generateCVV());
+        card.setClient(client);
+        return card;
+    }
+
+    private void storeCvvInCache(CryptoCard card) {
+        String token = UUID.randomUUID().toString();
+        cvvCache.put(token, card.getCvv());
+        card.setCvvToken(token);
+    }
+
+    private CryptoCard saveMaskedCard(CryptoCard card) {
+        CryptoCard maskedCard = maskCardData(card);
+        maskedCard.setCvv(null); // Не сохраняем CVV в БД
+        return cryptoCardRepository.save(maskedCard);
+    }
+
     private String generateCardNumber() {
-        return CARD_PREFIX +
-                generateRandomDigits(4) +
-                generateRandomDigits(4) +
-                generateRandomDigits(4);
+        return "4440" +
+                ThreadLocalRandom.current().nextInt(1000, 9999) +
+                ThreadLocalRandom.current().nextInt(1000, 9999) +
+                ThreadLocalRandom.current().nextInt(1000, 9999);
     }
 
     private String generateExpiryDate() {
-        LocalDate expiry = LocalDate.now().plusYears(CARD_VALID_YEARS);
+        LocalDate expiry = LocalDate.now().plusYears(3);
         return String.format("%02d/%02d", expiry.getMonthValue(), expiry.getYear() % 100);
     }
 
     private String generateCVV() {
-        return generateRandomDigits(CVV_LENGTH);
-    }
-
-    private String generateRandomDigits(int length) {
-        int min = (int) Math.pow(10, length - 1);
-        int max = (int) Math.pow(10, length);
-        return String.valueOf(ThreadLocalRandom.current().nextInt(min, max));
+        return String.format("%03d", ThreadLocalRandom.current().nextInt(0, 999));
     }
 
     private CryptoCard maskCardData(CryptoCard card) {
-        CryptoCard masked = new CryptoCard();
-        masked.setCryptoCardId(card.getCryptoCardId());
-        masked.setExpiryDate(card.getExpiryDate());
-        String fullNumber = card.getCryptoCardNumber();
-        if (fullNumber != null && fullNumber.length() == 16) {
-            masked.setCryptoCardNumber("**** **** **** " + fullNumber.substring(12));
+        String number = card.getCryptoCardNumber();
+        if (number != null && number.length() == 16) {
+            card.setCryptoCardNumber("**** **** **** " + number.substring(12));
         }
-        masked.setCvv("***");
-//        masked.setClient(null); // Убираем связь с клиентом
-        return masked;
+        return card;
     }
 }

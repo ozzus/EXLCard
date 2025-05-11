@@ -9,39 +9,32 @@ import java.time.LocalDate;
 
 @Entity
 @Data
-@Table(name = "client", schema = "public")
+@Table(name = "client")
 public class Client {
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long clientId;
 
-    @NotBlank(message = "Имя обязательно")
-    @Size(min = 2, max = 50, message = "Имя должно быть от 2 до 50 символов")
+    @NotBlank(message = "{validation.client.firstName.required}")
+    @Size(min = 2, max = 50, message = "{validation.client.firstName.size}")
     private String firstName;
 
-    @NotBlank(message = "Фамилия обязательна")
-    @Size(min = 2, max = 50, message = "Фамилия должна быть от 2 до 50 символов")
+    @NotBlank(message = "{validation.client.lastName.required}")
+    @Size(min = 2, max = 50, message = "{validation.client.lastName.size}")
     private String lastName;
 
-    @Email(message = "Некорректный формат email")
+    @Email(message = "{validation.client.email.invalid}")
     private String email;
 
-    @NotBlank(message = "Номер телефона обязателен")
+    @NotBlank(message = "{validation.client.phone.required}")
     @Pattern(
-            regexp = "^(\\+7\\d{10,11}|8\\d{10})$",
-            message = "Форматы: +7XXXXXXXXXX (12-13 символов) или 8XXXXXXXXXX (11 символов)"
+            regexp = "^\\+7\\d{10}$",
+            message = "{validation.client.phone.pattern}"
     )
-    @Column(name = "phone_number", length = 20,unique = true)
+    @Column(unique = true)
     private String phoneNumber;
 
-    @Past(message = "Дата рождения должна быть в прошлом")
+    @Past(message = "{validation.client.birthdate.past}")
     @JsonFormat(pattern = "dd.MM.yyyy")
-    @Column(name = "date_of_birthday")
     private LocalDate dateOfBirthday;
 }
-
-//    @OneToMany(mappedBy = "client",fetch = FetchType.LAZY)
-//    @JsonIgnore
-//    private List<CryptoCard> сryptoCards;
-
-
