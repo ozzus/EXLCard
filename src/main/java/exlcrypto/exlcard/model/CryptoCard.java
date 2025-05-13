@@ -13,7 +13,7 @@ public class CryptoCard {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long cryptoCardId;
 
-    @Column(nullable = false, length = 16)
+    @Column(nullable = false, length = 19)
     private String cryptoCardNumber;
 
     @JsonIgnore
@@ -23,7 +23,7 @@ public class CryptoCard {
     @Column(nullable = false, length = 5)
     private String expiryDate;
 
-    @Column(unique = true)
+    @Column(unique = true,length = 36)
     private String cvvToken; // Для одноразового доступа
 
     @JsonIgnore

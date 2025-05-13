@@ -33,6 +33,7 @@ public class ClientController {
 
     @PostMapping
     public ResponseEntity<?> createClient(@Valid @RequestBody Client client, BindingResult bindingResult) {
+        log.info("Received client data: {}", client);
         if (bindingResult.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             bindingResult.getFieldErrors().forEach(error -> {

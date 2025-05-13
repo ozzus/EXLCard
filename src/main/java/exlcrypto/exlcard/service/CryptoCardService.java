@@ -35,6 +35,11 @@ public class CryptoCardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
 
         CryptoCard card = generateCard(client);
+
+        if (card.getCvv() == null || card.getCvv().isBlank()) {
+            throw new IllegalStateException("CVV generation failed");
+        }
+
         storeCvvInCache(card);
         return saveMaskedCard(card);
     }
@@ -76,15 +81,13 @@ public class CryptoCardService {
 
     private CryptoCard saveMaskedCard(CryptoCard card) {
         CryptoCard maskedCard = maskCardData(card);
-        maskedCard.setCvv(null); // Не сохраняем CVV в БД
+//        maskedCard.setCvv(null); // Не сохраняем CVV в БД
         return cryptoCardRepository.save(maskedCard);
     }
 
     private String generateCardNumber() {
-        return "4440" +
-                ThreadLocalRandom.current().nextInt(1000, 9999) +
-                ThreadLocalRandom.current().nextInt(1000, 9999) +
-                ThreadLocalRandom.current().nextInt(1000, 9999);
+        // Генерация 16 цифр без пробелов
+        return String.format("%016d", ThreadLocalRandom.current().nextLong(1_0000_0000_0000_0000L, 9_9999_9999_9999_9999L));
     }
 
     private String generateExpiryDate() {
@@ -99,7 +102,7 @@ public class CryptoCardService {
     private CryptoCard maskCardData(CryptoCard card) {
         String number = card.getCryptoCardNumber();
         if (number != null && number.length() == 16) {
-            card.setCryptoCardNumber("**** **** **** " + number.substring(12));
+            card.setCryptoCardNumber(number.substring(0, 4) + " **** **** " + number.substring(12));
         }
         return card;
     }
