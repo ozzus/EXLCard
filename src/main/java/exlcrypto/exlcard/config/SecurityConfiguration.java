@@ -25,7 +25,7 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/cryptocards/cvv/**").authenticated()
+                        .requestMatchers("/api/cryptocards/cvv/**").permitAll()
                         .anyRequest().permitAll());
 
         return http.build();
